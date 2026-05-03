@@ -7,7 +7,6 @@ import time
 import matplotlib.pyplot as plt
 
 # --- 1. SAFE SHAP LOADING ---
-# This prevents the 'importlib' error from crashing your whole app
 try:
     import shap
     HAS_SHAP = True
@@ -38,11 +37,9 @@ def load_model():
 model = load_model()
 
 def compute_z_score(observed, predicted_mean):
-    """Calculates Z-scores based on GLI-2012 standardization."""
     return (observed / predicted_mean - 1) / 0.1
 
 def classify_patient(f):
-    # FIXED: Included ERV to meet the model's requirement of 9 features
     z_vals = [
         compute_z_score(f.get('fev1', 3.5), 3.5),
         compute_z_score(f.get('fvc', 4.5), 4.5),
@@ -51,19 +48,17 @@ def classify_patient(f):
         compute_z_score(f.get('tlc', 6.0), 6.0),
         compute_z_score(f.get('rv', 2.0), 2.0),
         compute_z_score(f.get('frc', 3.0), 3.0),
-        compute_z_score(f.get('erv', 1.5), 1.5), # 9th Feature required by model
+        compute_z_score(f.get('erv', 1.5), 1.5),
         compute_z_score(f.get('ic', 3.0), 3.0)
     ]
     if model:
         input_data = np.array([z_vals])
         pred = model.predict(input_data)[0]
-        # Multi-class labels for pulmonary diseases
         labels = {0: "Restrictive", 1: "Obstructive", 2: "Small Airway Disease", 3: "Normal"}
         return labels.get(pred, "Normal"), z_vals
     return "Normal", z_vals
 
 def render_shap_explanation(model, z_vals):
-    """Generates XAI logic using SHAP values[cite: 1]."""
     if not HAS_SHAP:
         st.warning("SHAP visualization is currently disabled due to local library conflicts.")
         return
@@ -90,6 +85,13 @@ with st.sidebar:
     st.success("✅ Engine: Active")
     st.write("**Deepthi Bhonsle** | CBIT ECE")
 
+    # --- ADDED INPUTS (ONLY CHANGE) ---
+    st.markdown("---")
+    st.subheader("👤 Patient Details")
+    age = st.number_input("Age", min_value=1, max_value=120, value=25)
+    height = st.number_input("Height (cm)", min_value=50, max_value=250, value=170)
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+
 # --- 5. MAIN UI ---
 st.title("🫁 Pulmonary Diagnostic Dashboard")
 t1, t2 = st.tabs(["📊 Clinical Entry", "🧬 Waveform Analysis"])
@@ -107,7 +109,7 @@ with t1:
     mf5 = c5.number_input("TLC (L)", 6.0, key="m5")
     mf6 = c6.number_input("RV (L)", 2.0, key="m6")
     mf7 = c7.number_input("FRC (L)", 3.0, key="m7")
-    mf8 = c8.number_input("ERV (L)", 1.5, key="m8") # Restored for model compatibility
+    mf8 = c8.number_input("ERV (L)", 1.5, key="m8")
     mf9 = c9.number_input("IC (L)", 3.0, key="m9")
 
     if st.button("Run Diagnostic", type="primary"):
@@ -137,7 +139,6 @@ with t2:
                 e_fev1 = abs(df.loc[(df['Time'] - (t0 + 1.0)).abs().idxmin(), 'Volume'] - v0)
                 e_ratio = e_fev1 / e_fvc if e_fvc > 0 else 0
                 
-                # Full 9-feature input vector for waveform processing
                 data_dict = {'fev1':e_fev1,'fvc':e_fvc,'ratio':e_ratio,'fef':4.0,'tlc':6.2,'rv':2.1,'frc':3.1,'erv':1.5,'ic':3.0}
                 diag, zs = classify_patient(data_dict)
                 
