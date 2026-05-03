@@ -1,0 +1,22 @@
+import java.util.*;
+public class javab{
+    public Static void main(String args[]){
+        Scanner sc= new Scanner(System.in);
+        while(true){
+        int m= sc.nextInt();
+        if(m%10==0){
+            break;
+        }
+        else {
+            System.out.println(m);
+
+        
+
+        }
+    }
+        
+        
+
+    }
+
+}
